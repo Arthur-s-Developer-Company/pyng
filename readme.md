@@ -4,7 +4,7 @@
 
 Jogo baseado no pong escrito em python com movimentos em 3 dimensões e rastreamento do movimento do mouse, escrito na biblioteca pygame.
 
-# Como instalar:
+# Como instalar
 
 Instale o pygame para o seu sistema operacional:
 [Windows](https://www.pygame.org/wiki/GettingStarted#Windows%20installation) | [MacOS](https://www.pygame.org/wiki/GettingStarted#Mac%20installation) | [Linux](https://www.pygame.org/wiki/GettingStarted#Unix%20Binary%20Packages)
