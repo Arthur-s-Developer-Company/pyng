@@ -183,13 +183,19 @@ class Game:
 
             # colisão no eixo X (verifica e aplica cooldown)
             if (self.pos_da_bola.x + self.raio_da_bola > self.screen.get_width() or self.pos_da_bola.x - self.raio_da_bola < 0) and self.cooldown_par.x <= 0:
-                # corrige posição para evitar ficar "fora" da tela
+                # Trecho que calcula a velocidade da raquete no momento da colisão
+                velo_raquete = pg.Vector2(0, 0)
+                if self.dt > 0:
+                    velo_raquete = self.movimento_raquete / self.dt
+                
+                # Trecho que corrige a posição da bola para evitar que ela fique "fora" da tela
                 if self.pos_da_bola.x + self.raio_da_bola > self.screen.get_width():
                     self.pos_da_bola.x = self.screen.get_width() - self.raio_da_bola
                 elif self.pos_da_bola.x - self.raio_da_bola < 0:
                     self.pos_da_bola.x = self.raio_da_bola
                 self.dir_da_bola.x *= -1
                 self.cooldown_par.x = self.collision_par_cooldown
+
             # colisão no eixo Y (verifica e aplica cooldown)
             if (self.pos_da_bola.y + self.raio_da_bola > self.screen.get_height() or self.pos_da_bola.y - self.raio_da_bola < 0) and self.cooldown_par.y <= 0:
                 # corrige posição para evitar ficar "fora" da tela
