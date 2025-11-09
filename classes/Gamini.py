@@ -188,11 +188,11 @@ class Game:
                     
                     self.dir_da_bola.x *= -1
                     
-                    y_influence = 0.0005 
+                    y_influence = 0.001 
                     self.dir_da_bola.y += paddle_vel.y * y_influence
                     
                     x_influence = 0.1 
-                    if paddle_vel.x > 0: # Move contra a bola
+                    if paddle_vel.x > 0: 
                         self.velocidade_bola += paddle_vel.x * x_influence
                     
                     self.dir_da_bola = self.dir_da_bola.normalize()
