@@ -39,7 +39,7 @@ class Game:
                                      -1 if random.randint(1,2) == 1 else 1)
         self.velocidade_base_bola = 450
         self.velocidade_bola = self.velocidade_base_bola
-        
+        self.air_drag = 0.3        
         ## Raquetes
         self.tamanho_raquetes = pg.Vector2(20, 80)
 
@@ -167,9 +167,16 @@ class Game:
 
 
         if self.espera == 0:
+            # Normaliza a direção da bola e aplica pequenas correções para evitar ângulos muito retos
+            if abs(self.dir_da_bola.x) < 0.25:
+                self.dir_da_bola.y *= 0.995
+            self.dir_da_bola = self.dir_da_bola.normalize()
+            # Movimento da bola com air drag
+            self.velocidade_bola -= self.air_drag
+            if self.velocidade_bola <= self.velocidade_base_bola:
+                self.velocidade_bola = self.velocidade_base_bola
 
-
-            self.pos_da_bola += self.dir_da_bola * self.velocidade_bola * self.dt
+            self.pos_da_bola += self.dir_da_bola.normalize() * self.velocidade_bola * self.dt
             
             # colisão no eixo X (verifica e aplica cooldown)
             if (self.pos_da_bola.x + self.raio_da_bola >= self.screen.get_width() -2 or self.pos_da_bola.x - self.raio_da_bola <= 2) and self.cooldown_par.x <= 0:
@@ -194,33 +201,36 @@ class Game:
                     if self.dt > 0:
                         velo_raquete = self.movimento_raquete_jogador / self.dt
                         # print(velo_raquete)
-                        
-                    self.dir_da_bola.x *= -1
+                    dir_raquete = self.movimento_raquete_jogador.normalize() if self.movimento_raquete_jogador.length() > 0 else pg.Vector2(0, 0)
 
+                    self.dir_da_bola.x *= -1
                     # Aumenta a velocidade da bola com base na velocidade da raquete
                       # Ajuste esse valor para controlar a influência da raquete na bola
                     if velo_raquete.x != 0:
                         self.velocidade_bola += velo_raquete.x * fator_influencia_x
-
+                        self.dir_da_bola.x += dir_raquete.x
+                    if velo_raquete.y != 0:
+                        self.velocidade_bola += abs(velo_raquete.y) 
+                        
                     
-                    self.dir_da_bola.y += velo_raquete.y * fator_influencia_y
+                    self.dir_da_bola.y += dir_raquete.y
 
                     if velo_raquete.x / 3 > abs(velo_raquete.y):
                         if abs(self.dir_da_bola.y) >= abs(self.dir_da_bola.x):
                             self.dir_da_bola.y /= 100
                     elif abs(velo_raquete.x) < 10 and abs(velo_raquete.y) < 10:
                         self.velocidade_bola /= 2
-                            
+                           
+                       
                     
-
                     self.dir_da_bola = self.dir_da_bola.normalize()
-
+                    
                     velocidade_max = 900
                     if self.velocidade_bola > velocidade_max: 
                         self.velocidade_bola = velocidade_max
                     if self.velocidade_bola < self.velocidade_base_bola:
                         self.velocidade_bola = self.velocidade_base_bola
-
+                    
 
                     self.vezes_colidiu += 1
                     self.cooldown_raq_jogador.x = self.collision_raq_cooldown
@@ -244,9 +254,11 @@ class Game:
             if self.pos_da_bola.x > self.zona_oponente:
                 # Colisão com a raquete do oponente (verifica e aplica cooldown)
                 if self.checar_colisao_raquete_oponente("x") and self.cooldown_raq_oponente.x <= 0:
+                    self.cooldown_par = pg.Vector2(0.0, 0.0)
                     self.dir_da_bola.x *= -1
                     self.cooldown_raq_oponente.x = self.collision_raq_cooldown
                 elif self.checar_colisao_raquete_oponente("y") and self.cooldown_raq_oponente.y <= 0:
+                    self.cooldown_par = pg.Vector2(0.0, 0.0)
                     self.dir_da_bola.y *= -1
                     self.cooldown_raq_oponente.y = self.collision_raq_cooldown
 
@@ -308,6 +320,26 @@ class Game:
             self.pos_raquete_jogador.x = 0
         if self.pos_raquete_jogador.x + self.tamanho_raquetes.x >= self.screen.get_width() * (2/5):
             self.pos_raquete_jogador.x = self.screen.get_width() * (2/5) - self.tamanho_raquetes.x
+        
+        # --- Lógica de Solidez (Bloqueio Visual) ---
+        # Cria retângulos temporários para checar sobreposição física
+        rect_raquete = pg.Rect(self.pos_raquete_jogador, self.tamanho_raquetes)
+        rect_bola = pg.Rect(self.pos_da_bola.x - self.raio_da_bola, 
+                            self.pos_da_bola.y - self.raio_da_bola, 
+                            self.raio_da_bola * 2, self.raio_da_bola * 2)
+        # Se sobrepor, força a raquete a ficar "atrás" da bola no eixo X
+        if rect_raquete.colliderect(rect_bola):
+            # Verifica se a bola está à direita da raquete (situação normal de defesa)
+            if self.pos_da_bola.x > self.pos_raquete_jogador.x:
+                self.pos_raquete_jogador.x = self.pos_da_bola.x - self.raio_da_bola - self.tamanho_raquetes.x
+        if self.vezes_colidiu >= 1 and self.pos_raquete_jogador.y < self.pos_da_bola.y < self.pos_raquete_jogador.y + self.tamanho_raquetes.y:
+            if pg.mouse.get_rel()[0] > 0 or pg.mouse.get_pos()[0] > self.pos_da_bola.x:
+                if self.pos_da_bola.x <= self.screen.get_width() * 2/5:
+                    self.pos_raquete_jogador.x = self.pos_da_bola.x - self.raio_da_bola - self.tamanho_raquetes.x
+                if pg.mouse.get_pos()[1] - self.tamanho_raquetes.y / 2 > self.pos_da_bola.y + self.raio_da_bola or pg.mouse.get_pos()[1] + self.tamanho_raquetes.y / 2 < self.pos_da_bola.y - self.raio_da_bola:
+                     pg.mouse.set_pos(float(self.pos_raquete_jogador.x + self.tamanho_raquetes.x / 2), float(pg.mouse.get_pos()[1]))
+            elif pg.mouse.get_rel()[0] < 0:
+                pg.mouse.set_pos(float(self.pos_raquete_jogador.x + self.tamanho_raquetes.x / 2), float(pg.mouse.get_pos()[1]))
         
         # Verifica se já colidiu com a bola, se sim, desenha a raquete com transparência
         if self.vezes_colidiu >= self.max_vezes_pode_colidir + 1:

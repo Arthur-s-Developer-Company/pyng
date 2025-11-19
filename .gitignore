@@ -3,3 +3,4 @@
 /pip
 /venv
 ./classes/Gamini.py
+*.prof
