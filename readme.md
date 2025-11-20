@@ -9,10 +9,11 @@ Jogo baseado no pong escrito em python com movimentos em 3 dimensões e rastream
 Instale o pygame para o seu sistema operacional:
 [Windows](https://www.pygame.org/wiki/GettingStarted#Windows%20installation) | [MacOS](https://www.pygame.org/wiki/GettingStarted#Mac%20installation) | [Linux](https://www.pygame.org/wiki/GettingStarted#Unix%20Binary%20Packages)
 
-Clone o Repositório:
+Clone o Repositório e entre na pasta dele:
 
 ```
 git clone https://github.com/RandomUserjs/pyng.git
+cd pyng
 ```
 
 Inicie e ative um venv do python, e instale o pygame:  
