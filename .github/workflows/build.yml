@@ -4,13 +4,13 @@ on:
   push:
     tags: 
       - 'v*'
-  workflow_dispatch:  # Permite executar manualmente pelo painel do GitHub
+  workflow_dispatch:
 
 jobs:
   build:
+    # 1. Definição da Matriz
     strategy:
       matrix:
-        # Define os sistemas operacionais (runners) para compilar
         os: [ubuntu-latest, windows-latest] 
 
     runs-on: ${{ matrix.os }}
@@ -19,84 +19,75 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # Garantindo o Python 3.12
     - name: Set up Python 3.12
       uses: actions/setup-python@v5
       with:
-        python-version: '3.12' # Versão estável com suporte a dependências
-
+        python-version: '3.12'
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install pygame pyinstaller
-        # Instala dependências Pygame e PyInstaller
 
     # --- Configurações Específicas do Windows ---
     - name: Set Console=False for Windows Build
       if: runner.os == 'Windows'
       run: |
-        # Para que o jogo no Windows não abra o terminal preto
+        # Evita a abertura da janela do terminal no Windows
         (Get-Content app.spec) -replace 'console=True', 'console=False' | Set-Content app.spec
       shell: powershell
 
-    # --- Etapa de Compilação (Dividida por OS) ---
+    # --- Etapa de Compilação Linux (One-File) ---
     - name: Compile Executable (Linux; One-File)
       if: runner.os == 'Linux'
       run: |
-        # O modo -F (One-File) é obrigatório para compatibilidade Linux.
-        # Os --add-data garantem que as pastas 'Fonts', 'Sons' e 'classes' sejam incluídas.
+        # O executável será criado como dist/Pyng
         pyinstaller -F --name Pyng --add-data "Fonts:Fonts" --add-data "Sons:Sons" --add-data "classes:classes" app.py
 
+    # --- Etapa de Compilação Windows (One-Dir) ---
     - name: Compile Executable (Windows; One-Dir)
       if: runner.os == 'Windows'
       run: |
-        # Windows usa o app.spec (que configura o One-Dir por padrão)
+        # Compila no modo One-Dir. O executável fica em dist/Pyng/Pyng.exe
         pyinstaller app.spec
 
-    # --- ETAPA DE PREPARAÇÃO DOS ARTEFATOS ---
+    # 🎯 NOVO PASSO: ZIPA A PASTA DO WINDOWS 🎯
     - name: Zip Windows Artifact
       if: runner.os == 'Windows'
       run: |
-          # Compacta toda a pasta dist/Pyng/ em um único arquivo ZIP
-          7z a -r pyng-win.zip dist/Pyng/
-      shell: cmd # Usa o shell de comando para o 7z
+        # O arquivo ZIP é criado na raiz do runner (./pyng-win.zip)
+        7z a -r pyng-win.zip dist/Pyng/
+      shell: cmd
 
-    # --- PASSO DE UPLOAD DE ARTEFATOS ---
+    # --- UPLOAD DE ARTEFATOS CORRIGIDO ---
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: pyng-build-${{ matrix.os }}
         path: |
-          dist/         # Binário Linux (arquivo único)
-          dist/Pyng/pyng-win.zip  # ZIP do Windows (arquivo único)
+          dist/Pyng        # Caminho para o binário Linux (dentro de dist/)
+          pyng-win.zip     # Caminho para o ZIP do Windows (criado na raiz do runner)
         retention-days: 7
   
   release:
     name: Create GitHub Release
-    # Roda somente após o job 'build' ter sido concluído com sucesso
     needs: build
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write # Concede permissão de escrita para criar a Release
+      contents: write
     
-    # Condição para rodar apenas em tags (ex: v1.0, v1.1)
     if: startsWith(github.ref, 'refs/tags/')
     
     steps:
     - name: Download all build artifacts
-      # Baixa os arquivos compilados (Linux e Windows)
       uses: actions/download-artifact@v4
       with:
-        path: artifacts # Baixa os arquivos para uma pasta chamada 'artifacts'
-
-    - name: List downloaded files (for debug)
-      run: ls -R artifacts
+        path: artifacts 
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
-        # Pega o nome da tag (ex: v1.0) para o título da Release
         tag_name: ${{ github.ref_name }}
         name: Pyng - Release ${{ github.ref_name }}
         body: |
@@ -104,10 +95,14 @@ jobs:
           
           Assets incluídos:
           - Binário Linux
-          - Executável Windows
-        draft: false # Lança publicamente
+          - Executável Windows (Compactado)
+        draft: false
         prerelease: false
-        files: artifacts/**/* # Anexa todos os executáveis e zips baixados
+        
+        # 🎯 CAMINHOS DE ANEXO CORRIGIDOS 🎯
+        files: |
+          artifacts/pyng-build-ubuntu-latest/Pyng
+          artifacts/pyng-build-windows-latest/pyng-win.zip
+        overwrite_files: true
       env:
-        # O GitHub fornece este token automaticamente
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
