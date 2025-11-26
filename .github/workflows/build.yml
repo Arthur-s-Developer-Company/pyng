@@ -61,6 +61,9 @@ jobs:
     # Roda somente após o job 'build' ter sido concluído com sucesso
     needs: build
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # Concede permissão de escrita para criar a Release
     
     # Condição para rodar apenas em tags (ex: v1.0, v1.1)
     if: startsWith(github.ref, 'refs/tags/')
