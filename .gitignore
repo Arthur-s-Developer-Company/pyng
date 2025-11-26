@@ -2,5 +2,8 @@
 /install
 /pip
 /venv
+/build
+/dist
 ./classes/Gamini.py
 *.prof
+./classes/__pycache__/

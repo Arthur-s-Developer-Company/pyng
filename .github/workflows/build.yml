@@ -1,0 +1,93 @@
+name: Build Executables
+
+on:
+  push:
+    branches: [ main ]  # Aciona a compilação sempre que houver um push para a branch 'main'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Permite executar manualmente pelo painel do GitHub
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        # Define os sistemas operacionais (runners) para compilar
+        os: [ubuntu-latest, windows-latest] 
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Garantindo o Python 3.12
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12' # Versão estável com suporte a dependências
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pygame pyinstaller
+        # Instala dependências Pygame e PyInstaller
+
+    # --- Configurações Específicas do Windows ---
+    - name: Set Console=False for Windows Build
+      if: runner.os == 'Windows'
+      run: |
+        # Para que o jogo no Windows não abra o terminal preto
+        (Get-Content app.spec) -replace 'console=True', 'console=False' | Set-Content app.spec
+      shell: powershell
+
+    # --- Etapa de Compilação ---
+    - name: Run PyInstaller
+      run: |
+        pyinstaller app.spec
+
+    # --- Etapa de Empacotamento e Upload ---
+    - name: Compress and Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        # O nome do artefato inclui o SO para diferenciá-los
+        name: pyng-build-${{ matrix.os }}
+        path: dist/Pyng/  # Pasta gerada pelo COLLECT do PyInstaller
+        retention-days: 7
+  
+  release:
+    name: Create GitHub Release
+    # Roda somente após o job 'build' ter sido concluído com sucesso
+    needs: build
+    runs-on: ubuntu-latest
+    
+    # Condição para rodar apenas em tags (ex: v1.0, v1.1)
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Download all build artifacts
+      # Baixa os arquivos compilados (Linux e Windows)
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts # Baixa os arquivos para uma pasta chamada 'artifacts'
+
+    - name: List downloaded files (for debug)
+      run: ls -R artifacts
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        # Pega o nome da tag (ex: v1.0) para o título da Release
+        tag_name: ${{ github.ref_name }}
+        name: Pyng - Release ${{ github.ref_name }}
+        body: |
+          Este é o lançamento ${{ github.ref_name }} do jogo Pyng.
+          
+          Assets incluídos:
+          - Binário Linux
+          - Executável Windows
+        draft: false # Lança publicamente
+        prerelease: false
+        files: artifacts/*/* # Anexa todos os executáveis e zips baixados
+      env:
+        # O GitHub fornece este token automaticamente
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,5 +1,20 @@
 import pygame as pg
 import random
+import os
+import sys
+
+# Função para resolver o problema de caminho do PyInstaller
+def resource_path(relative_path):
+    """Obtém o caminho absoluto para recursos, compatível com PyInstaller."""
+    try:
+        # Caminho gerado pelo PyInstaller em tempo de execução
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # Caminho padrão (desenvolvimento)
+        base_path = os.path.abspath(".")
+    
+    # É importante usar os.path.join para construir o caminho
+    return os.path.join(base_path, relative_path)
 
 class Game:
     def __init__(self):
@@ -68,10 +83,9 @@ class Game:
         # Placar
         self.pontuacao_jogador = 0
         self.pontuacao_oponente = 0
-        self.fonte = pg.font.Font("Fonts/FiraCode-Bold.ttf", 50)
-
+        self.fonte = pg.font.Font(resource_path("Fonts/FiraCode-Bold.ttf"), 50)
         # Sons
-        self.som_colisao_raquete = pg.mixer.Sound("Sons/hit_paddle.wav")
+        self.som_colisao_raquete = pg.mixer.Sound(resource_path("Sons/hit_paddle.wav"))
 
 
     def desenhar_jogo(self):
