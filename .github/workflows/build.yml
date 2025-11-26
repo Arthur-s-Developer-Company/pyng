@@ -64,13 +64,20 @@ jobs:
       shell: cmd
 
     # --- UPLOAD DE ARTEFATOS CORRIGIDO ---
-    - name: Upload Build Artifacts
+    - name: Upload Build Artifacts (Linux)
+      if: runner.os == 'Linux'
       uses: actions/upload-artifact@v4
       with:
-        name: pyng-build-${{ matrix.os }}
-        path: |
-          Pyng-Linux  # Novo caminho para o binário Linux (na raiz do runner)
-          pyng-win.zip  # Caminho para o ZIP do Windows (na raiz do runner)
+        name: pyng-build-ubuntu-latest
+        path: Pyng-Linux
+        retention-days: 7
+
+    - name: Upload Build Artifacts (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: pyng-build-windows-latest
+        path: pyng-win.zip
         retention-days: 7
   
   release:
