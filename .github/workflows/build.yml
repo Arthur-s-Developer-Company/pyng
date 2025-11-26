@@ -100,7 +100,7 @@ jobs:
           - Executável Windows
         draft: false # Lança publicamente
         prerelease: false
-        files: artifacts/*/* # Anexa todos os executáveis e zips baixados
+        files: artifacts/**/* # Anexa todos os executáveis e zips baixados
       env:
         # O GitHub fornece este token automaticamente
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
