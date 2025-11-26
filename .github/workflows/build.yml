@@ -2,11 +2,8 @@ name: Build Executables
 
 on:
   push:
-    branches: [ main ]  # Aciona a compilação sempre que houver um push para a branch 'main'
     tags: 
       - 'v*'
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:  # Permite executar manualmente pelo painel do GitHub
 
 jobs:
@@ -42,10 +39,28 @@ jobs:
         (Get-Content app.spec) -replace 'console=True', 'console=False' | Set-Content app.spec
       shell: powershell
 
-    # --- Etapa de Compilação ---
-    - name: Run PyInstaller
+    # --- Etapa de Compilação (Dividida por OS) ---
+    - name: Compile Executable (Linux; One-File)
+      if: runner.os == 'Linux'
       run: |
+        # O modo -F (One-File) é obrigatório para compatibilidade Linux.
+        # Os --add-data garantem que as pastas 'Fonts', 'Sons' e 'classes' sejam incluídas.
+        pyinstaller -F --name Pyng --add-data "Fonts:Fonts" --add-data "Sons:Sons" --add-data "classes:classes" app.py
+
+    - name: Compile Executable (Windows; One-Dir)
+      if: runner.os == 'Windows'
+      run: |
+        # Windows usa o app.spec (que configura o One-Dir por padrão)
         pyinstaller app.spec
+
+    # --- Etapa de Upload Artifacts (Ajustada) ---
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        # A pasta 'dist' agora contém o binário 'Pyng' (Linux) OU a pasta 'Pyng' (Windows)
+        name: pyng-build-${{ matrix.os }}
+        path: dist/
+        retention-days: 7
 
     # --- Etapa de Empacotamento e Upload ---
     - name: Compress and Upload Artifacts
