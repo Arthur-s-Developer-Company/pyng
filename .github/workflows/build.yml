@@ -3,6 +3,8 @@ name: Build Executables
 on:
   push:
     branches: [ main ]  # Aciona a compilação sempre que houver um push para a branch 'main'
+    tags: 
+      - 'v*'
   pull_request:
     branches: [ main ]
   workflow_dispatch:  # Permite executar manualmente pelo painel do GitHub
