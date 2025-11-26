@@ -53,22 +53,15 @@ jobs:
         # Windows usa o app.spec (que configura o One-Dir por padrão)
         pyinstaller app.spec
 
-    # --- Etapa de Upload Artifacts (Ajustada) ---
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        # A pasta 'dist' agora contém o binário 'Pyng' (Linux) OU a pasta 'Pyng' (Windows)
-        name: pyng-build-${{ matrix.os }}
-        path: dist/
-        retention-days: 7
-
-    # --- Etapa de Empacotamento e Upload ---
+    # --- Etapa de Upload Artifacts (CORRIGIDA) ---
     - name: Compress and Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        # O nome do artefato inclui o SO para diferenciá-los
+        # Uploads a pasta dist inteira, que conterá:
+        # - O ARQUIVO 'Pyng' (Linux) OU
+        # - A PASTA 'Pyng/' (Windows)
         name: pyng-build-${{ matrix.os }}
-        path: dist/Pyng/  # Pasta gerada pelo COLLECT do PyInstaller
+        path: dist/ 
         retention-days: 7
   
   release:
