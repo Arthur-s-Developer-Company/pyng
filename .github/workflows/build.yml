@@ -33,7 +33,6 @@ jobs:
     - name: Set Console=False for Windows Build
       if: runner.os == 'Windows'
       run: |
-        # Evita a abertura da janela do terminal no Windows
         (Get-Content app.spec) -replace 'console=True', 'console=False' | Set-Content app.spec
       shell: powershell
 
@@ -41,14 +40,12 @@ jobs:
     - name: Compile Executable (Linux; One-File)
       if: runner.os == 'Linux'
       run: |
-        # O executável será criado como dist/Pyng
         pyinstaller -F --name Pyng --add-data "Fonts:Fonts" --add-data "Sons:Sons" --add-data "classes:classes" app.py
 
     # --- Etapa de Compilação Windows (One-Dir) ---
     - name: Compile Executable (Windows; One-Dir)
       if: runner.os == 'Windows'
       run: |
-        # Compila no modo One-Dir. O executável fica em dist/Pyng/Pyng.exe
         pyinstaller app.spec
 
     # 🎯 NOVO PASSO: ZIPA A PASTA DO WINDOWS 🎯
@@ -56,7 +53,6 @@ jobs:
       if: runner.os == 'Windows'
       run: |
         # O arquivo ZIP é criado na raiz do runner (./pyng-win.zip)
-        # 7z é a ferramenta padrão do runner do Windows
         7z a -r pyng-win.zip dist/Pyng/
       shell: cmd
 
@@ -66,8 +62,8 @@ jobs:
       with:
         name: pyng-build-${{ matrix.os }}
         path: |
-          dist/Pyng        # Caminho para o binário Linux (One-File)
-          pyng-win.zip     # Caminho para o ZIP do Windows (na raiz do runner)
+          dist/Pyng
+          pyng-win.zip
         retention-days: 7
   
   release:
@@ -82,9 +78,11 @@ jobs:
     
     steps:
     - name: Download all build artifacts
+      # CORREÇÃO: Usamos o 'pattern' para garantir que os arquivos certos sejam baixados
       uses: actions/download-artifact@v4
       with:
-        path: artifacts 
+        path: artifacts
+        pattern: pyng-build-*
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
@@ -100,7 +98,7 @@ jobs:
         draft: false
         prerelease: false
         
-        # 🎯 CAMINHOS DE ANEXO CORRIGIDOS 🎯
+        # CAMINHOS DE ANEXO CORRIGIDOS
         files: |
           artifacts/pyng-build-ubuntu-latest/Pyng
           artifacts/pyng-build-windows-latest/pyng-win.zip
