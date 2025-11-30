@@ -37,7 +37,7 @@ Depois navegue para `./pyng-win/dist/Pyng`, e execute o arquivo `Pyng.exe`
 
 ### Requisitos:
 
-- Python 3.12+
+- Python 3.12
 - Verifique os requisitos do [Pyinstaller](https://pyinstaller.org/en/stable/requirements.html#requirements) (link)
 - Pygame ([Windows](https://www.pygame.org/wiki/GettingStarted#Windows%20installation) | [MacOS](https://www.pygame.org/wiki/GettingStarted#Mac%20installation) | [Linux](https://www.pygame.org/wiki/GettingStarted#Unix%20Binary%20Packages))
 

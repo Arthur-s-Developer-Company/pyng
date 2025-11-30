@@ -1,20 +1,6 @@
+from Caminhos import Caminho
 import pygame as pg
 import random
-import os
-import sys
-
-# Função para resolver o problema de caminho do PyInstaller
-def resource_path(relative_path):
-    """Obtém o caminho absoluto para recursos, compatível com PyInstaller."""
-    try:
-        # Caminho gerado pelo PyInstaller em tempo de execução
-        base_path = sys._MEIPASS # type: ignore
-    except AttributeError:
-        # Caminho padrão (desenvolvimento)
-        base_path = os.path.abspath(".")
-    
-    # É importante usar os.path.join para construir o caminho
-    return os.path.join(base_path, relative_path)
 
 class Game:
     def __init__(self):
@@ -28,8 +14,8 @@ class Game:
         # Mouse
         pg.display.set_caption("Pyng")  # Título da janela
         pg.mouse.set_visible(False)  # Torna o cursor invisível
-        self.mouse_captured = True
         pg.event.set_grab(True)
+        self.mouse_captured = True
         
         # Tempo
         self.clock = pg.time.Clock()
@@ -40,9 +26,10 @@ class Game:
         self.setup_game()
         
     def setup_game(self):
+        self.caminho = Caminho()
         # Cooldowns
         self.collision_par_cooldown = 0.3
-        self.collision_raq_cooldown = pg.Vector2(2.0, 0.3)
+        self.collision_raq_cooldown = pg.Vector2(2.0, 2.0)
         self.cooldown_par = pg.Vector2(0.0, 0.0)
         self.cooldown_raq_jogador = pg.Vector2(0.0, 0.0)
         self.cooldown_raq_oponente = pg.Vector2(0.0, 0.0)
@@ -83,9 +70,9 @@ class Game:
         # Placar
         self.pontuacao_jogador = 0
         self.pontuacao_oponente = 0
-        self.fonte = pg.font.Font(resource_path("Fonts/FiraCode-Bold.ttf"), 50)
+        self.fonte_placar = pg.font.Font(self.caminho.obter_caminho("Fonts/FiraCode-Bold.ttf"), 50)
         # Sons
-        self.som_colisao_raquete = pg.mixer.Sound(resource_path("Sons/hit_paddle.wav"))
+        self.som_colisao_raquete = pg.mixer.Sound(self.caminho.obter_caminho("Sons/hit_paddle.wav"))
 
 
     def desenhar_jogo(self):
@@ -109,7 +96,7 @@ class Game:
         
         bola_rect = pg.Rect(self.pos_da_bola.x - self.raio_da_bola, self.pos_da_bola.y - self.raio_da_bola,
                             self.raio_da_bola * 2, self.raio_da_bola * 2)
-        self.placar_jogador = self.fonte.render(f"{self.pontuacao_jogador}", True, (255, 255, 255))
+        self.placar_jogador = self.fonte_placar.render(f"{self.pontuacao_jogador}", True, (255, 255, 255))
         self.rect_placar_jogador = self.placar_jogador.get_rect()
         self.rect_placar_jogador.topleft = (int(self.screen.get_width() / 2) - 70 - self.rect_placar_jogador.width, 20)
         if bola_rect.colliderect(self.rect_placar_jogador):
@@ -118,7 +105,7 @@ class Game:
             self.placar_jogador.set_alpha(100)
         self.screen.blit(self.placar_jogador, self.rect_placar_jogador)
 
-        self.placar_oponente = self.fonte.render(f"{self.pontuacao_oponente}", True, (255, 255, 255))
+        self.placar_oponente = self.fonte_placar.render(f"{self.pontuacao_oponente}", True, (255, 255, 255))
         self.rect_placar_oponente = self.placar_oponente.get_rect()
         self.rect_placar_oponente.topleft = (int(self.screen.get_width() / 2) + 70, 20)
         if bola_rect.colliderect(self.rect_placar_oponente):
@@ -432,7 +419,7 @@ class Game:
     def atualizar_raquete_oponente(self):
         self.pos_anterior_raquete_oponente = self.pos_raquete_oponente.copy()
         
-        self.velo_raq_oponente = 600
+        self.velo_raq_oponente = 800
         self.dir_raq_oponente = pg.Vector2(0, 0)
         key = pg.key.get_pressed()
         if key[pg.K_w]:
