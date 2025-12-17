@@ -72,23 +72,23 @@ jobs:
           7z a -r pyng-win.zip dist/Pyng/
         shell: cmd
 
-      # --- UPLOAD DE ARTEFATOS CORRIGIDO ---
+      # --- UPLOAD LINUX ---
       - name: Upload Build Artifacts (Linux)
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
           name: pyng-build-ubuntu-latest
           path: Pyng-Linux
-          retention-days: 7
+          compression-level: 0
 
+      # --- UPLOAD WINDOWS ---
       - name: Upload Build Artifacts (Windows)
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: pyng-build-windows-latest
           path: pyng-win.zip
-          retention-days: 7
-
+          compression-level: 0
   release:
     name: Create GitHub Release
     needs: build
@@ -101,18 +101,17 @@ jobs:
 
     steps:
       - name: Download all build artifacts
-        # Usamos o 'pattern' para garantir que os arquivos certos sejam baixados
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          pattern: pyng-build-*
+          merge-multiple: true
 
       # Passo de Debug para confirmar a estrutura de pastas baixadas
       - name: List downloaded files (for debug)
         run: ls -R artifacts
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
           name: Pyng - Release ${{ github.ref_name }}
@@ -131,10 +130,9 @@ jobs:
           draft: false
           prerelease: false
 
-          # CAMINHOS DE ANEXO CORRIGIDOS
+          # CAMINHOS SIMPLIFICADOS
           files: |
-            artifacts/pyng-build-ubuntu-latest/Pyng-Linux
-            artifacts/pyng-build-windows-latest/pyng-win.zip
-          overwrite_files: true
+            artifacts/Pyng-Linux
+            artifacts/pyng-win.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
