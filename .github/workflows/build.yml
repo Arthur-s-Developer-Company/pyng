@@ -38,9 +38,8 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           pyinstaller app.spec
-          mv dist/Pyng Pyng-Linux
+          cp dist/Pyng/Pyng Pyng-Linux
           chmod +x Pyng-Linux
-
 
       # --- Build Windows ---
       - name: Build Windows
@@ -50,6 +49,9 @@ jobs:
           pyinstaller app.spec
           7z a -r pyng-win.zip dist/Pyng/
         shell: powershell
+
+      - name: List files
+        run: ls -R .
 
       # --- Upload Direto para o Release ---
       - name: Upload to Release
