@@ -1,10 +1,40 @@
+# -*- mode: python ; coding: utf-8 -*-
+
 import sys
 import os
 
+block_cipher = None
+
 IS_LINUX = sys.platform.startswith("linux")
 
+a = Analysis(
+    ['app.py'],
+    pathex=[os.getcwd()],
+    binaries=[],
+    datas=[
+        ('Fonts', 'Fonts'),
+        ('Sons', 'Sons'),
+        ('classes', 'classes'),
+    ],
+    hiddenimports=[],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+PYZ = PYZ(
+    a.pure,
+    a.zipped_data,
+    cipher=block_cipher,
+)
+
 exe = EXE(
-    pyz,
+    PYZ,
     a.scripts,
     a.binaries if IS_LINUX else [],
     a.zipfiles,
