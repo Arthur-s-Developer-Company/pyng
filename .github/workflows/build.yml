@@ -38,8 +38,9 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           pyinstaller app.spec
-          cp dist/Pyng/Pyng Pyng-Linux
-          chmod +x Pyng-Linux
+          chmod +x dist/Pyng
+          mv dist/Pyng Pyng-Linux
+
 
       # --- Build Windows ---
       - name: Build Windows
