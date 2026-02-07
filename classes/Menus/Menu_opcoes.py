@@ -34,7 +34,7 @@ class Opcoes:
             layout = arquivo_config.get("keyboard_layout")
             if layout in self.layouts:
                 self.layout_selecionado = layout
-        quit_rect = None
+        self.quit_rect = None
 
         # fonts
         self.title_font = lambda size: pg.font.Font(self.caminho.obter_caminho("Fonts/RasterForgeRegular-JpBgm.ttf"), size)
