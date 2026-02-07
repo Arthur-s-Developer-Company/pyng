@@ -34,13 +34,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install pygame pyinstaller
 
-      # --- Build Linux ---
       - name: Build Linux
         if: runner.os == 'Linux'
         run: |
-          pyinstaller -F --name Pyng --add-data "Fonts:Fonts" --add-data "Sons:Sons" --add-data "classes:classes" app.py
+          pyinstaller app.spec
           mv dist/Pyng Pyng-Linux
           chmod +x Pyng-Linux
+
 
       # --- Build Windows ---
       - name: Build Windows
