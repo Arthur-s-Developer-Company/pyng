@@ -3,6 +3,11 @@
 
 block_cipher = None
 
+import sys
+
+IS_LINUX = sys.platform.startswith("linux")
+
+
 a = Analysis(
     ['app.py'],       # Seu script principal
     pathex=[],
@@ -43,6 +48,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    onefile=IS_LINUX
 )
 coll = COLLECT(
     exe,
