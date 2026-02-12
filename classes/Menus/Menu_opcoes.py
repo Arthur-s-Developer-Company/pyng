@@ -34,7 +34,13 @@ class Opcoes:
             layout = arquivo_config.get("keyboard_layout")
             if layout in self.layouts:
                 self.layout_selecionado = layout
-        self.quit_rect = pg.rect(0,0,0,0)
+        
+        #Botão quit (tá aqui só pra não crashar na versão EXE)
+        cor_do_x_quit = (255, 0, 0)
+        tamanho_do_x_quit = 40
+        pos_x_quit = self.screen.get_width() - tamanho_do_x_quit - 20
+        pos_y_quit = 20
+        self.quit_rect = pg.Rect(pos_x_quit, pos_y_quit, tamanho_do_x_quit, tamanho_do_x_quit)
 
         # fonts
         self.title_font = lambda size: pg.font.Font(self.caminho.obter_caminho("Fonts/RasterForgeRegular-JpBgm.ttf"), size)
