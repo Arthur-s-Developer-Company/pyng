@@ -1,5 +1,4 @@
 import random
-from curses import raw
 
 import pygame as pg
 
