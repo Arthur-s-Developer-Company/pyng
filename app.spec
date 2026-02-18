@@ -1,20 +1,20 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-import sys
 import os
+import sys
 
 block_cipher = None
 
 IS_LINUX = sys.platform.startswith("linux")
 
 a = Analysis(
-    ['app.py'],
+    ["app.py"],
     pathex=[os.getcwd()],
     binaries=[],
     datas=[
-        ('Fonts', 'Fonts'),
-        ('Sons', 'Sons'),
-        ('classes', 'classes'),
+        ("Fonts", "Fonts"),
+        ("Sons", "Sons"),
+        ("classes", "classes"),
     ],
     hiddenimports=[],
     hookspath=[],
@@ -36,10 +36,10 @@ PYZ = PYZ(
 exe = EXE(
     PYZ,
     a.scripts,
-    a.binaries if IS_LINUX else [],
+    a.binaries,  # ← sempre isso
     a.zipfiles,
     a.datas,
-    name='Pyng',
+    name="Pyng",
     debug=False,
     strip=False,
     upx=True,
@@ -56,5 +56,5 @@ if not IS_LINUX:
         strip=False,
         upx=True,
         upx_exclude=[],
-        name='Pyng',
+        name="Pyng",
     )
