@@ -9,6 +9,7 @@ from classes.States import States
 class Game:
     def __init__(self):
         pg.init()
+
         # Tela
         self.screen = pg.display.set_mode((1920, 1080), pg.FULLSCREEN)  # Tamanho fixo
 
