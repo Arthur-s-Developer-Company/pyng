@@ -107,7 +107,7 @@ pyinstaller app.spec
 Após a compilação, o executável ficará disponível na pasta `./dist/Pyng`
 
 # Todos
-[x] Implementar física (curva, força, spin)
-[ ] Implementar inteligência artificial (IA)
-[ ] Implementar função de acelerar a raquete do oponente (sprint)
-[ ] Aumentar a solidez da raquete
+- [x] Implementar física (curva, força, spin)
+- [ ] Implementar inteligência artificial (IA)
+- [ ] Implementar função de acelerar a raquete do oponente (sprint)
+- [ ] Aumentar a solidez da raquete
