@@ -1,7 +1,7 @@
 /.vscode
 /install
 /pip
-/venv
+/.venv
 /build
 /dist
 ./classes/Gamini.py
@@ -10,3 +10,4 @@
 /**/*.pyc
 /**/__pycache__
 .github/workflows/build.yml.bak
+sandbox.ipynb
