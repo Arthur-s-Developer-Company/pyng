@@ -520,21 +520,32 @@ class Game:
                             spin_factor = 0.05
                             fator_potencia_x = 0.9
                             efeito_borracha = 0.6
-                            impulso_mouse = 1000 + abs(raw_velo_raquete.x) * fator_potencia_x
+                            impulso_mouse = 1000 * abs(raw_velo_raquete.x) * fator_potencia_x
                             print(self.charge_level)
 
 
                         if abs(velo_raquete.y) >= 10:
                             self.ball_spin = (-velo_raquete.y / 4) * spin_factor
-                        else:
+                        elif self.charge_level < 1.0:
                             self.ball_spin *= 1 / 2
+                        else:  
+                            self.ball_spin *= 5
                         
-                        self.ball_velocity.x = (
-                            abs(self.ball_velocity.x) + impulso_mouse
-                        ) * 1.1  # +10% de bônus
-                        self.ball_velocity.y += self.ball_spin * abs(
-                            self.ball_velocity.x
-                        ) * efeito_borracha + (velo_raquete.y / 2)
+                        if self.charge_level < 1.0:
+                            self.ball_velocity.x = (
+                                abs(self.ball_velocity.x) + impulso_mouse
+                            ) * 1.1  # +10% de bônus
+                            self.ball_velocity.y += self.ball_spin * abs(
+                                self.ball_velocity.x
+                            ) * efeito_borracha + (velo_raquete.y / 2)
+                        else:
+                            self.ball_velocity.x = (
+                                abs(self.ball_velocity.x) + impulso_mouse
+                            ) * 10  # +1000% de bônus
+                            self.ball_velocity.y += self.ball_spin * abs(
+                                self.ball_velocity.x
+                            ) * efeito_borracha + (velo_raquete.y / 2) * 5
+
                         if self.pos_anterior_raquete_jogador.x > self.pos_da_bola.x:
                             self.ball_velocity.x *= -1
 
