@@ -1,4 +1,4 @@
-import random
+import random  # noqa: N999
 
 import pygame as pg
 
@@ -26,7 +26,11 @@ class Game:
         # Tempo
         self.clock = pg.time.Clock()
         self.running = True
+        self.paused = False
         self.dt = 0
+
+        # For mouse offset when pausing to prevent teleportation
+        self.saved_mouse_offset = pg.Vector2(0, 0)
 
         # Inicialização das variáveis do jogo
         self.setup_game()
@@ -80,6 +84,7 @@ class Game:
         self.slowdown = 0
         self.velocidade_max = 1100
         self.velocidade_max_anterior = self.velocidade_max
+        self.colidiu = False
 
         ## Raquetes
         self.tamanho_raquetes = pg.Vector2(20, 80)
@@ -100,10 +105,12 @@ class Game:
         self.vezes_colidiu = 0
         self.pos_anterior_raquete_jogador = self.pos_raquete_jogador.copy()
         self.segurando = 0
+        self.ignore_first_frame = 0
+        self.velocidade_maxima = 15.0
 
         # Charge da raquete
-        self.charge_level = 0.0      # De 0.0 a 1.0
-        self.charge_speed = 1.5      # Quanto tempo leva para carregar (1.5 = ~0.6s)
+        self.charge_level = 0.0  # De 0.0 a 1.0
+        self.charge_speed = 1.5  # Quanto tempo leva para carregar (1.5 = ~0.6s)
         self.pronto = 0
         self.b_amarelo_atual = 50.0
         self.b_amarelo_alvo = 200.0
@@ -127,6 +134,9 @@ class Game:
         self.ponto_opon_placar = self.pontuacao_oponente
         self.fonte_placar = pg.font.Font(
             self.caminho.obter_caminho("Fonts/FiraCode-Bold.ttf"), 50
+        )
+        self.fonte_retro = lambda tamanho: pg.font.Font(
+            self.caminho.obter_caminho("Fonts/RasterForgeRegular-JpBgm.ttf"), tamanho
         )
         self.alpha_atual_jog = 255
         self.alpha_alvo_jog = 255
@@ -287,26 +297,27 @@ class Game:
             )
 
             # Verifica colisão na posição interpolada
-            if x_ou_y == "x":
-                if (
+            if (
+                x_ou_y == "x"
+                and (
                     pos_raquete_inter.y
                     <= pos_bola_inter.y
                     <= pos_raquete_inter.y + self.tamanho_raquetes.y
                     and pos_bola_inter.x - self.raio_da_bola
                     <= pos_raquete_inter.x + self.tamanho_raquetes.x
                     and pos_bola_inter.x + self.raio_da_bola >= pos_raquete_inter.x
-                ):
-                    return True
-            elif x_ou_y == "y":
-                if (
+                )
+                or x_ou_y == "y"
+                and (
                     pos_raquete_inter.x
                     <= pos_bola_inter.x
                     <= pos_raquete_inter.x + self.tamanho_raquetes.x
                     and pos_bola_inter.y + self.raio_da_bola >= pos_raquete_inter.y
                     and pos_bola_inter.y - self.raio_da_bola
                     <= pos_raquete_inter.y + self.tamanho_raquetes.y
-                ):
-                    return True
+                )
+            ):
+                return True
 
         return False
 
@@ -357,7 +368,6 @@ class Game:
     def desenhar_raquete_gradiente(self, rect, charge):
         # ANCHOR Raquete Jogador
         x, y, w, h = rect
-        
 
         # Cores base
         if self.cooldown_raq_jogador.x <= 0:
@@ -366,39 +376,37 @@ class Game:
         else:
             COR_VAZIO = pg.Vector3(100, 100, 100)
             COR_CARREGANDO = pg.Vector3(20, 180, 20)
-        
 
         # 1. ESTADO: PRONTO (Carga máxima)
         if charge >= 1.0:
             # Definimos o alvo como o Amarelo Claro (B = 200 ou 250)
             # O lerp vai levar a cor até lá e parar.
-            alvo_final_azul = 200.0 
-            
+            alvo_final_azul = 200.0
+
             # Suaviza a transição de Amarelo Forte para Claro
             self.b_amarelo_atual = pg.math.lerp(
                 self.b_amarelo_atual, alvo_final_azul, min(1.0, 5.0 * self.dt)
             )
 
             color = (255, 255, int(self.b_amarelo_atual))
-            
-            if self.cooldown_raq_jogador.x > 0: 
+
+            if self.cooldown_raq_jogador.x > 0:
                 color = (110, 110, 80)
 
-            # if self.cooldown_raq_jogador.x > 0: 
+            # if self.cooldown_raq_jogador.x > 0:
             #    self.charge_level = 0.0
-            
+
             # Desenha o retângulo sólido
             pg.draw.rect(self.screen, color, rect)
-
 
         # 2. ESTADO: CARREGANDO (Gradiente linha por linha)
         else:
             # Resetamos a variável do azul para o próximo especial começar "forte" de novo
-            self.b_amarelo_atual = 50.0 
+            self.b_amarelo_atual = 50.0
 
             for i in range(int(h)):
                 pos_relativa = (h - i) / h
-                
+
                 if pos_relativa <= charge:
                     t = pos_relativa / charge if charge > 0 else 0
                     r = pg.math.lerp(COR_VAZIO.x, COR_CARREGANDO.x, t)
@@ -413,7 +421,12 @@ class Game:
 
                 # --- CORREÇÃO DO 1 PX ---
                 # Desenhamos até x + w - 1 para bater com o tamanho do Rect
-                pg.draw.line(self.screen, color, (int(x), int(y + i)), (int(x + w - 1), int(y + i)))
+                pg.draw.line(
+                    self.screen,
+                    color,
+                    (int(x), int(y + i)),
+                    (int(x + w - 1), int(y + i)),
+                )
 
         if self.cooldown_raq_jogador.x > 0 and self.segurando == 0:
             color = (100, 100, 100)
@@ -421,9 +434,8 @@ class Game:
 
     def reduzir_por_dt(self, variavel, valor_minimo):
         if variavel > 0:
-            variavel -= self.dt 
-            if variavel < valor_minimo:
-                variavel = valor_minimo
+            variavel -= self.dt
+            variavel = max(variavel, valor_minimo)
         return variavel
 
     def atualizar_bola(self):
@@ -432,15 +444,26 @@ class Game:
         self.cooldown_charge_jog = self.reduzir_por_dt(self.cooldown_charge_jog, 0)
         self.cooldown_par.x = self.reduzir_por_dt(self.cooldown_par.x, 0)
         self.cooldown_par.y = self.reduzir_por_dt(self.cooldown_par.y, 0)
-        self.cooldown_raq_jogador.x = self.reduzir_por_dt(self.cooldown_raq_jogador.x, 0)
-        self.cooldown_raq_jogador.y = self.reduzir_por_dt(self.cooldown_raq_jogador.y, 0)
-        self.cooldown_raq_oponente.x = self.reduzir_por_dt(self.cooldown_raq_oponente.x, 0)
-        self.cooldown_raq_oponente.y = self.reduzir_por_dt(self.cooldown_raq_oponente.y, 0)
+        self.cooldown_raq_jogador.x = self.reduzir_por_dt(
+            self.cooldown_raq_jogador.x, 0
+        )
+        self.cooldown_raq_jogador.y = self.reduzir_por_dt(
+            self.cooldown_raq_jogador.y, 0
+        )
+        self.cooldown_raq_oponente.x = self.reduzir_por_dt(
+            self.cooldown_raq_oponente.x, 0
+        )
+        self.cooldown_raq_oponente.y = self.reduzir_por_dt(
+            self.cooldown_raq_oponente.y, 0
+        )
+        # Reset colidiu when both cooldowns have expired
+        if self.cooldown_raq_jogador.x <= 0 and self.cooldown_raq_jogador.y <= 0:
+            self.colidiu = False
 
         if self.pos_da_bola.x - self.raio_da_bola >= self.screen.get_width() / 2:
             self.vezes_colidiu = 0
 
-        # SECTION Bola 
+        # SECTION Bola
         if self.espera == 0:
             ball_acceleration = (
                 pg.Vector2(-self.ball_velocity.y, self.ball_velocity.x)
@@ -481,24 +504,40 @@ class Game:
                 self.pontuacao_jogador += 1
                 self.som_ponto.play()
                 self.reiniciar_bola()
-
+                self.colidiu = False
+                self.cooldown_raq_jogador = pg.Vector2(0.0, 0.0)
+                self.cooldown_raq_oponente = pg.Vector2(0.0, 0.0)
             elif self.pos_da_bola.x - self.raio_da_bola <= 2:
                 self.pontuacao_oponente += 1
                 self.som_ponto.play()
                 self.reiniciar_bola()
+                self.colidiu = False
+                self.cooldown_raq_jogador = pg.Vector2(0.0, 0.0)
+                self.cooldown_raq_oponente = pg.Vector2(0.0, 0.0)
+
+            # if (
+            #     self.pos_da_bola.x - self.raio_da_bola
+            #     < self.pos_raquete_jogador.x + self.tamanho_raquetes.x
+            #     and self.colidiu
+            # ):
+            #     self.pos_da_bola.x = (
+            #         self.pos_raquete_jogador.x
+            #         + self.tamanho_raquetes.x
+            #         + self.raio_da_bola
+            #     )
 
             # # Colisão com as raquetes
             # SECTION Colisão raquete jogador
             # ANCHOR Eixo X
             if self.pos_da_bola.x < self.zona_jogador:
+                self.cooldown_raq_oponente = pg.Vector2(0.0, 0.0)
                 # colisão com a raquete do jogador (verifica e aplica cooldown)
                 if self.cooldown_raq_jogador.x <= 0:
                     if self.checar_colisao_raquete_jogador("x"):
                         self.cooldown_par = pg.Vector2(0.0, 0.0)
                         self.cooldown_raq_jogador.x = self.collision_raq_cooldown.x
                         self.cooldown_raq_jogador.y = self.collision_raq_cooldown.y
-                        
-
+                        self.colidiu = True
                         self.som_colisao_raquete.play()
 
                         # Trecho que calcula a velocidade da raquete no momento da colisão
@@ -520,17 +559,18 @@ class Game:
                             spin_factor = 0.05
                             fator_potencia_x = 0.9
                             efeito_borracha = 0.6
-                            impulso_mouse = 1000 * abs(raw_velo_raquete.x) * fator_potencia_x
+                            impulso_mouse = (
+                                1000 * abs(raw_velo_raquete.x) * fator_potencia_x
+                            )
                             print(self.charge_level)
-
 
                         if abs(velo_raquete.y) >= 10:
                             self.ball_spin = (-velo_raquete.y / 4) * spin_factor
                         elif self.charge_level < 1.0:
                             self.ball_spin *= 1 / 2
-                        else:  
+                        else:
                             self.ball_spin *= 5
-                        
+
                         if self.charge_level < 1.0:
                             self.ball_velocity.x = (
                                 abs(self.ball_velocity.x) + impulso_mouse
@@ -542,9 +582,12 @@ class Game:
                             self.ball_velocity.x = (
                                 abs(self.ball_velocity.x) + impulso_mouse
                             ) * 10  # +1000% de bônus
-                            self.ball_velocity.y += self.ball_spin * abs(
-                                self.ball_velocity.x
-                            ) * efeito_borracha + (velo_raquete.y / 2) * 5
+                            self.ball_velocity.y += (
+                                self.ball_spin
+                                * abs(self.ball_velocity.x)
+                                * efeito_borracha
+                                + (velo_raquete.y / 2) * 5
+                            )
 
                         if self.pos_anterior_raquete_jogador.x > self.pos_da_bola.x:
                             self.ball_velocity.x *= -1
@@ -552,37 +595,37 @@ class Game:
                         self.charge_level = 0.0
 
                     # ANCHOR Eixo Y
-                    if self.cooldown_raq_jogador.y <= 0:
-                        if self.checar_colisao_raquete_jogador("y"):
-                            self.cooldown_par = pg.Vector2(0.0, 0.0)
-                            self.cooldown_raq_jogador.x = self.collision_raq_cooldown.x
-                            self.cooldown_raq_jogador.y = self.collision_raq_cooldown.y
-                            self.charge_level = 0.0
+                    if (
+                        self.cooldown_raq_jogador.y <= 0
+                        and self.checar_colisao_raquete_jogador("y")
+                    ):
+                        self.cooldown_par = pg.Vector2(0.0, 0.0)
+                        self.cooldown_raq_jogador.x = self.collision_raq_cooldown.x
+                        self.cooldown_raq_jogador.y = self.collision_raq_cooldown.y
+                        self.charge_level = 0.0
 
-                            velo_raquete = pg.Vector2(0, 0)
-                            raw_velo_raquete = pg.Vector2(0, 0)
-                            if self.dt > 0:
-                                raw_velo_raquete = (
-                                    self.movimento_raquete_jogador / self.dt
-                                )
-                                # print(velo_raquete)
+                        velo_raquete = pg.Vector2(0, 0)
+                        raw_velo_raquete = pg.Vector2(0, 0)
+                        if self.dt > 0:
+                            raw_velo_raquete = self.movimento_raquete_jogador / self.dt
+                            # print(velo_raquete)
 
-                            velo_raquete.y = max(
-                                -2000, min(2000, raw_velo_raquete.y)
-                            )  # Limite de 2000 pixels/seg
+                        velo_raquete.y = max(
+                            -2000, min(2000, raw_velo_raquete.y)
+                        )  # Limite de 2000 pixels/seg
 
-                            fator_influencia_y = 0.5
-                            self.ball_velocity.y *= -self.ball_restitution
-                            self.ball_velocity.y += velo_raquete.y * fator_influencia_y
-                            self.ball_velocity.x += (
-                                self.ball_spin * 5 * self.ball_friction
-                            )
-                            bouce_effect = self.ball_spin * 15
-                            self.ball_velocity.x += bouce_effect
-                            self.ball_spin *= 0.8
-                            self.ball_velocity.y *= -1
+                        fator_influencia_y = 0.5
+                        self.ball_velocity.y *= -self.ball_restitution
+                        self.ball_velocity.y += velo_raquete.y * fator_influencia_y
+                        self.ball_velocity.x += self.ball_spin * 5 * self.ball_friction
+                        bouce_effect = self.ball_spin * 15
+                        self.ball_velocity.x += bouce_effect
+                        self.ball_spin *= 0.8
+                        self.ball_velocity.y *= -1
 
             if self.pos_da_bola.x > self.zona_oponente:
+                self.cooldown_raq_jogador = pg.Vector2(0.0, 0.0)
+                self.colidiu = False
                 # Colisão com a raquete do oponente (verifica e aplica cooldown)
                 if self.cooldown_raq_oponente.x <= 0:
                     if self.checar_colisao_raquete_oponente("x"):
@@ -595,12 +638,6 @@ class Game:
 
                         # Trecho que calcula a velocidade da raquete no momento da colisão
                         velocity_raquete = pg.Vector2(0, 0)
-
-                        dir_raq_oponente = (
-                            self.dir_raq_oponente.normalize()
-                            if self.dir_raq_oponente.length() > 0
-                            else pg.Vector2(0, 0)
-                        )
 
                         if self.dt > 0:
                             velocity_raquete = (
@@ -627,63 +664,34 @@ class Game:
                         if self.pos_anterior_raquete_oponente.x > self.pos_da_bola.x:
                             self.ball_velocity.x *= -1
 
-                            # print(velo_raquete)
+                    if (
+                        self.cooldown_raq_oponente.y <= 0
+                        and self.checar_colisao_raquete_oponente("y")
+                    ):
+                        self.cooldown_par = pg.Vector2(0.0, 0.0)
 
-                    #     if self.dir_da_bola.x < 0:
-                    #         self.dir_da_bola.x += dir_raq_oponente.x
-                    #     else:
-                    #         self.dir_da_bola.x *= -1
+                        self.cooldown_raq_oponente.y = self.collision_raq_cooldown.y
 
-                    #     if self.dir_raq_oponente.x < 0:
-                    #         self.velocidade_bola += (
-                    #             abs(velo_raquete.x) * fator_influencia_x
-                    #         )
-                    #         self.dir_da_bola.x += self.dir_da_bola.x / 2
-                    #     if self.dir_raq_oponente.y != 0:
-                    #         self.velocidade_bola += (
-                    #             abs(velo_raquete.y) * fator_influencia_y
-                    #         )
-                    #         self.dir_da_bola.y += self.dir_raq_oponente.y / 2
+                        velo_raquete = pg.Vector2(0, 0)
 
-                    #     self.dir_da_bola = self.dir_da_bola.normalize()
+                        fator_influencia_y = 3.5  # Ajuste esse valor para controlar a influência da raquete na bola
 
-                    #     self.velocidade_max = 1100
-
-                    #     if self.velocidade_bola > self.velocidade_max:
-                    #         self.velocidade_bola = self.velocidade_max
-                    #     if self.velocidade_bola < self.velocidade_base_bola:
-                    #         self.velocidade_bola = self.velocidade_base_bola
-
-                    #     self.vezes_colidiu += 1
-
-                    if self.cooldown_raq_oponente.y <= 0:
-                        if self.checar_colisao_raquete_oponente("y"):
-                            self.cooldown_par = pg.Vector2(0.0, 0.0)
-
-                            self.cooldown_raq_oponente.y = self.collision_raq_cooldown.y
-
-                            velo_raquete = pg.Vector2(0, 0)
-
-                            fator_influencia_y = 3.5  # Ajuste esse valor para controlar a influência da raquete na bola
-
-                            if self.dt > 0:
-                                velocity_raquete = (
-                                    self.dir_raq_oponente
-                                    * self.velo_raq_oponente
-                                    * self.dt
-                                )
-                                fator_influencia_y = 0.5
-                                self.ball_velocity.y *= -self.ball_restitution
-                                self.ball_velocity.y += (
-                                    velocity_raquete.y * fator_influencia_y
-                                )
-                                self.ball_velocity.x += (
-                                    self.ball_spin * 5 * self.ball_friction
-                                )
-                                bouce_effect = self.ball_spin * 15
-                                self.ball_velocity.x += bouce_effect
-                                self.ball_spin *= 0.8
-                                self.ball_velocity.y *= -1
+                        if self.dt > 0:
+                            velocity_raquete = (
+                                self.dir_raq_oponente * self.velo_raq_oponente * self.dt
+                            )
+                            fator_influencia_y = 0.5
+                            self.ball_velocity.y *= -self.ball_restitution
+                            self.ball_velocity.y += (
+                                velocity_raquete.y * fator_influencia_y
+                            )
+                            self.ball_velocity.x += (
+                                self.ball_spin * 5 * self.ball_friction
+                            )
+                            bouce_effect = self.ball_spin * 15
+                            self.ball_velocity.x += bouce_effect
+                            self.ball_spin *= 0.8
+                            self.ball_velocity.y *= -1
 
         pg.draw.circle(self.screen, "white", self.pos_da_bola, self.raio_da_bola)
 
@@ -692,175 +700,64 @@ class Game:
         mousekey = pg.mouse.get_pressed()
         # Armazena a posição anterior da raquete
         self.pos_anterior_raquete_jogador = self.pos_raquete_jogador.copy()
-        
 
+        if not self.colidiu and self.segurando == 0:
+            if (
+                self.pos_da_bola.x >= self.zona_jogador
+                and self.velocidade_maxima < 15.0
+            ):
+                self.velocidade_maxima += 0.2
+                self.velocidade_maxima = min(self.velocidade_maxima, 15.0)
+        elif self.colidiu:
+            self.velocidade_maxima = (
+                self.velocidade_bola * 0.9 * self.dt
+            )  # pixels por frame
+        else:
+            self.velocidade_maxima = 2.0  # pixels por frame
 
-        # posição desejada baseada no mouse (centraliza a raquete)
-        mouse_x, mouse_y = pg.mouse.get_pos()
-        desejada = pg.Vector2(
-            mouse_x - self.tamanho_raquetes.x / 2, mouse_y - self.tamanho_raquetes.y / 2
+        # 2. Pegamos a posição alvo (centralizada no mouse)
+        posicao_alvo = pg.Vector2(
+            pg.mouse.get_pos()[0] - self.tamanho_raquetes.x / 2,
+            pg.mouse.get_pos()[1] - self.tamanho_raquetes.y / 2,
         )
 
-        # deslocamento bruto (pixels por frame)
-        desloc = desejada - self.pos_anterior_raquete_jogador
+        # Cálculo do movimento da raquete
+        deslocamento = posicao_alvo - self.pos_raquete_jogador
+        distancia = deslocamento.length()
 
+        if distancia > 0:
+            # Se a distância até o mouse for maior que a velocidade máxima permitida:
+            if distancia > self.velocidade_maxima:
+                # Normalizamos o vetor (tamanho 1) e multiplicamos pela velocidade máxima
+                direcao = deslocamento.normalize()
+                self.pos_raquete_jogador += direcao * self.velocidade_maxima
+            else:
+                # Se for menor, a raquete simplesmente chega ao mouse suavemente
+                self.pos_raquete_jogador = posicao_alvo
 
-        
-
-        """velocidade = 450
-        direcao = pg.Vector2(0, 0)
-        key = pg.key.get_pressed()
-        if key[pg.K_w]:
-            direcao.y -= 1
-        if key[pg.K_r]:
-            direcao.y += 1
-        if key[pg.K_a]:
-            direcao.x -= 1
-        if key[pg.K_s]:
-            direcao.x += 1
-        if direcao.length() > 0:
-            direcao = direcao.normalize()
-        if direcao.y > 0:
-            print(direcao.y)
-            self.pos_raquete += direcao * velocidade * self.dt"""
+        # Mecânica de charge da raquete do jogador
         if not mousekey[0]:
-            self.pos_raquete_jogador = pg.Vector2(
-                pg.mouse.get_pos()[0] - self.tamanho_raquetes.x / 2,
-                pg.mouse.get_pos()[1] - self.tamanho_raquetes.y / 2,
+            self.charge_level = max(
+                0.0, self.charge_level - self.charge_speed * 2 * self.dt
             )
             self.segurando = 0
+        else:
+            # Incrementa a carga enquanto segura o botão
+            self.charge_level = min(
+                1.0, self.charge_level + self.charge_speed * self.dt
+            )
+            self.segurando = 1
 
         self.movimento_raquete_jogador = pg.Vector2(
             self.pos_raquete_jogador.x - self.pos_anterior_raquete_jogador.x,
             self.pos_raquete_jogador.y - self.pos_anterior_raquete_jogador.y,
         )
-        # print(self.movimento_raquete)
-
-        
 
         self.pos_mouse_desejada = pg.Vector2(
             pg.mouse.get_pos()[0], pg.mouse.get_pos()[1]
         )
-        
-
-        # Cria um rect vazio e centraliza na bola
-        rect_bola = pg.Rect(0, 0, self.raio_da_bola * 2, self.raio_da_bola * 2)
-        rect_bola.center = (int(self.pos_da_bola.x), int(self.pos_da_bola.y))
-        rect_raquete = pg.Rect(
-            self.pos_raquete_jogador.x,
-            self.pos_raquete_jogador.y,
-            self.tamanho_raquetes.x,
-            self.tamanho_raquetes.y,
-        )
-        if (
-            self.cooldown_raq_jogador.x > 0
-            and self.cooldown_raq_jogador.y < 0
-            and self.ball_velocity.x > 0
-        ):
-            # 1. Guarda a posição onde o mouse QUER que a raquete esteja
-            alvo_pos = pg.Vector2(pg.mouse.get_pos())
-
-            # 2. Move a raquete em direção ao alvo, mas de forma controlada
-            # Se a distância for muito grande (salto do mouse), a gente limita ou checa o trajeto
-            self.pos_raquete_jogador.x = alvo_pos.x
-            self.pos_raquete_jogador.y = alvo_pos.y
-
-            # 3. CRÍTICO: Se a raquete "passou" da bola, a gente traz ela de volta
-            rect_bola = pg.Rect(
-                int(self.pos_da_bola.x - self.raio_da_bola),
-                int(self.pos_da_bola.y - self.raio_da_bola),
-                int(self.raio_da_bola * 2),
-                int(self.raio_da_bola * 2),
-            )
-            rect_raquete = pg.Rect(
-                int(self.pos_raquete_jogador.x),
-                int(self.pos_raquete_jogador.y),
-                int(self.tamanho_raquetes.x),
-                int(self.tamanho_raquetes.y),
-            )
-
-            # Verificação de "Atravessamento Lógico"
-            # Se a bola está entre a posição antiga da raquete e a nova do mouse:
-            if (
-                self.pos_raquete_jogador.x > self.pos_da_bola.x
-                and self.pos_anterior_raquete_jogador.x < self.pos_da_bola.x
-            ):
-                # A raquete tentou pular a bola! Forçamos ela a parar antes.
-                if (
-                    abs(self.pos_raquete_jogador.y - self.pos_da_bola.y)
-                    < self.tamanho_raquetes.y
-                ):
-                    self.pos_raquete_jogador.x = (
-                        self.pos_da_bola.x - self.tamanho_raquetes.x - self.raio_da_bola
-                    )
-
-            # 4. Aplica o Clip (para casos de sobreposição parcial)
-            if rect_raquete.colliderect(rect_bola):
-                area = rect_raquete.clip(rect_bola)
-                # Se a raquete está à esquerda da bola, empurra para a esquerda
-                if self.pos_raquete_jogador.x < self.pos_da_bola.x:
-                    self.pos_raquete_jogador.x -= area.width
-                else:
-                    self.pos_raquete_jogador.x += area.width
-
-            # # 5. Salva a posição atual para o próximo frame
-            # self.pos_anterior_raquete_jogador = pg.Vector2(self.pos_raquete_jogador)
-
-        if (
-            self.cooldown_raq_jogador.x > 0
-            and self.cooldown_raq_jogador.y > 0
-            and self.ball_velocity.x > 0
-        ):
-            if (
-                self.cooldown_raq_jogador.x >= 0
-                and self.cooldown_raq_jogador.y >= 0
-                and self.pos_da_bola.x <= self.zona_jogador
-                and self.pos_raquete_jogador.y
-                <= self.pos_da_bola.y
-                <= self.pos_raquete_jogador.y + self.tamanho_raquetes.y
-                and self.pos_raquete_jogador.x < self.pos_da_bola.x + self.raio_da_bola
-            ):
-                if self.pos_mouse_desejada.x > self.pos_da_bola.x:
-                    self.velocidade_bola += 2
-                    self.velocidade_max_anterior = self.velocidade_max
-                    self.velocidade_max += 2
-                    self.slowdown = 0.5
-
-            if self.pos_da_bola.x >= self.zona_jogador:
-                if self.slowdown > 0:
-                    self.slowdown -= self.dt
-                if self.slowdown <= 0:
-                    self.slowdown = 0
-                    if self.velocidade_bola > self.velocidade_max_anterior:
-                        self.velocidade_bola = self.velocidade_max_anterior
-                    self.velocidade_max = self.velocidade_max_anterior
-                self.cooldown_raq_jogador = pg.Vector2(0.0, 0.0)
-
-        
-        if mousekey[0]:
-            # Incrementa a carga enquanto segura o botão
-            self.charge_level = min(1.0, self.charge_level + self.charge_speed * self.dt)
-            
-            # O seu código de movimentação relativa existente
-            dx, dy = pg.mouse.get_rel()
-            velocidade = 50
-            self.pos_raquete_jogador.x += self.segurando * dx * velocidade * self.dt
-            self.pos_raquete_jogador.y += self.segurando * dy * velocidade * self.dt
-
-            pg.mouse.set_pos(
-                self.pos_raquete_jogador.x + self.tamanho_raquetes.x / 2,
-                self.pos_raquete_jogador.y + self.tamanho_raquetes.y / 2
-            )
-            self.segurando = 1
-            
-        else:
-            # Se soltar o botão, a carga reseta (ou você pode disparar o especial aqui)
-            self.charge_level = max(0.0, self.charge_level - self.charge_speed * 2 * self.dt)
-        
-        
         # Limites da tela
-        if self.pos_raquete_jogador.y <= 0:
-            self.pos_raquete_jogador.y = 0
+        self.pos_raquete_jogador.y = max(0, self.pos_raquete_jogador.y)
         if (
             self.pos_raquete_jogador.y + self.tamanho_raquetes.y
             >= self.screen.get_height()
@@ -868,8 +765,7 @@ class Game:
             self.pos_raquete_jogador.y = (
                 self.screen.get_height() - self.tamanho_raquetes.y
             )
-        if self.pos_raquete_jogador.x <= 0:
-            self.pos_raquete_jogador.x = 0
+        self.pos_raquete_jogador.x = max(0, self.pos_raquete_jogador.x)
         if (
             self.pos_raquete_jogador.x + self.tamanho_raquetes.x
             >= self.screen.get_width() * (2 / 5)
@@ -878,15 +774,13 @@ class Game:
                 self.screen.get_width() * (2 / 5) - self.tamanho_raquetes.x
             )
 
-        
         raquete_rect = (
-        self.pos_raquete_jogador.x, 
-        self.pos_raquete_jogador.y, 
-        self.tamanho_raquetes.x, 
-        self.tamanho_raquetes.y
+            self.pos_raquete_jogador.x,
+            self.pos_raquete_jogador.y,
+            self.tamanho_raquetes.x,
+            self.tamanho_raquetes.y,
         )
         self.desenhar_raquete_gradiente(raquete_rect, self.charge_level)
-            
 
     def atualizar_raquete_oponente(self):
         self.pos_anterior_raquete_oponente = self.pos_raquete_oponente.copy()
@@ -935,8 +829,7 @@ class Game:
                 self.screen.get_height() - self.tamanho_raquetes.y
             )
         # Limita o teto
-        if self.pos_raquete_oponente.y <= 0:
-            self.pos_raquete_oponente.y = 0
+        self.pos_raquete_oponente.y = max(0, self.pos_raquete_oponente.y)
         # Limita canto direito
         if (
             self.pos_raquete_oponente.x + self.tamanho_raquetes.x
@@ -946,8 +839,9 @@ class Game:
                 self.screen.get_width() - self.tamanho_raquetes.x
             )
         # Limita o meio
-        if self.pos_raquete_oponente.x <= self.screen.get_width() * (3 / 5):
-            self.pos_raquete_oponente.x = self.screen.get_width() * (3 / 5)
+        self.pos_raquete_oponente.x = max(
+            self.screen.get_width() * (3 / 5), self.pos_raquete_oponente.x
+        )
         if self.pos_da_bola.x <= self.zona_oponente:
             self.cooldown_raq_oponente = pg.Vector2(0.0, 0.0)
 
@@ -976,25 +870,75 @@ class Game:
 
     def run(self):
         while self.running:
-            self.dt = self.clock.tick(1000) / 1000
+            # Limit FPS to 60 when paused to save CPU, otherwise unlimited (or 1000)
+            if self.paused:
+                self.dt = self.clock.tick(60) / 1000
+            else:
+                self.dt = self.clock.tick(1000) / 1000
 
             # Eventos
             for event in pg.event.get():
                 if event.type == pg.QUIT:
                     self.running = False
-                elif event.type == pg.KEYDOWN:
+                elif event.type == pg.KEYDOWN:  # noqa: SIM102
                     if event.key == pg.K_ESCAPE:
+                        if self.paused:
+                            # Currently paused, so we are about to unpause
+                            racket_center = (
+                                self.pos_raquete_jogador + self.tamanho_raquetes / 2
+                            )
+                            desired_mouse_pos = racket_center + self.saved_mouse_offset
+                            pg.mouse.set_pos((desired_mouse_pos.x, desired_mouse_pos.y))
+                            # discard any accumulated mouse movement
+                            pg.mouse.get_rel()
+                        else:
+                            # Currently not paused, so we are about to pause
+                            mouse_pos = pg.Vector2(pg.mouse.get_pos())
+                            racket_center = (
+                                self.pos_raquete_jogador + self.tamanho_raquetes / 2
+                            )
+                            self.saved_mouse_offset = mouse_pos - racket_center
+
+                        # Toggle pause state and update mouse grab/visibility
+                        self.paused = not self.paused
                         self.mouse_captured = not self.mouse_captured
                         self.mouse_visible = not self.mouse_visible
                         pg.event.set_grab(self.mouse_captured)
                         pg.mouse.set_visible(self.mouse_visible)
 
-            # Atualização
+            # Desenho do fundo e linha central (sempre)
             self.desenhar_jogo()
-            self.atualizar_raquete_jogador()
-            self.atualizar_raquete_oponente()
-            self.atualizar_bola()
-            self.atualizar_placar()
+
+            # Atualização e desenho dos objetos do jogo (apenas se não estiver pausado)
+            if not self.paused:
+                self.atualizar_raquete_jogador()
+                self.atualizar_raquete_oponente()
+                self.atualizar_bola()
+                self.atualizar_placar()
+
+            # Overlay de pausa
+            if self.paused:
+                overlay = pg.Surface(self.screen.get_size(), pg.SRCALPHA)
+                overlay.fill((0, 0, 0, 180))  # semi-transparent black
+                self.screen.blit(overlay, (0, 0))
+                text = self.fonte_retro(100).render("PAUSED", True, (255, 255, 255))
+                help_text = self.fonte_retro(60).render(
+                    "Press ESC to unpause", True, (255, 255, 255)
+                )
+                rect = text.get_rect(
+                    center=(
+                        self.screen.get_width() // 2,
+                        self.screen.get_height() // 2 - 100,
+                    )
+                )
+                help_rect = help_text.get_rect(
+                    center=(
+                        self.screen.get_width() // 2,
+                        self.screen.get_height() // 2,
+                    )
+                )
+                self.screen.blit(text, rect)
+                self.screen.blit(help_text, help_rect)
 
             # Renderização
             pg.display.flip()
