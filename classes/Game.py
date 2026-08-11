@@ -532,67 +532,68 @@ class Game:
             if self.pos_da_bola.x < self.zona_jogador:
                 self.cooldown_raq_oponente = pg.Vector2(0.0, 0.0)
                 # colisão com a raquete do jogador (verifica e aplica cooldown)
-                if self.cooldown_raq_jogador.x <= 0:
-                    if self.checar_colisao_raquete_jogador("x"):
-                        self.cooldown_par = pg.Vector2(0.0, 0.0)
-                        self.cooldown_raq_jogador.x = self.collision_raq_cooldown.x
-                        self.cooldown_raq_jogador.y = self.collision_raq_cooldown.y
-                        self.colidiu = True
-                        self.som_colisao_raquete.play()
+                if (
+                    self.cooldown_raq_jogador.x <= 0
+                    and self.checar_colisao_raquete_jogador("x")
+                ):
+                    self.cooldown_par = pg.Vector2(0.0, 0.0)
+                    self.cooldown_raq_jogador.x = self.collision_raq_cooldown.x
+                    self.cooldown_raq_jogador.y = self.collision_raq_cooldown.y
+                    self.colidiu = True
+                    self.som_colisao_raquete.play()
 
-                        # Trecho que calcula a velocidade da raquete no momento da colisão
-                        velo_raquete = pg.Vector2(0, 0)
-                        raw_velo_raquete = pg.Vector2(0, 0)
-                        if self.dt > 0:
-                            raw_velo_raquete = self.movimento_raquete_jogador / self.dt
-                            # print(velo_raquete)
+                    # Trecho que calcula a velocidade da raquete no momento da colisão
+                    velo_raquete = pg.Vector2(0, 0)
+                    raw_velo_raquete = pg.Vector2(0, 0)
+                    if self.dt > 0:
+                        raw_velo_raquete = self.movimento_raquete_jogador / self.dt
+                        # print(velo_raquete)
 
-                        velo_raquete.y = max(
-                            -2000, min(2000, raw_velo_raquete.y)
-                        )  # Limite de 2000 pixels/seg
-                        if self.charge_level < 1.0:
-                            spin_factor = 0.005
-                            fator_potencia_x = 0.5
-                            efeito_borracha = 0.2
-                            impulso_mouse = abs(raw_velo_raquete.x) * fator_potencia_x
-                        else:
-                            spin_factor = 0.05
-                            fator_potencia_x = 0.9
-                            efeito_borracha = 0.6
-                            impulso_mouse = (
-                                1000 * abs(raw_velo_raquete.x) * fator_potencia_x
-                            )
-                            print(self.charge_level)
+                    velo_raquete.y = max(-2000, min(2000, raw_velo_raquete.y))
+                    velo_raquete.x = max(-2000, min(2000, raw_velo_raquete.x))
 
-                        if abs(velo_raquete.y) >= 10:
-                            self.ball_spin = (-velo_raquete.y / 4) * spin_factor
-                        elif self.charge_level < 1.0:
-                            self.ball_spin *= 1 / 2
-                        else:
-                            self.ball_spin *= 5
+                    if velo_raquete.x > 1000 and velo_raquete.x < 100:
+                        self.ball_velocity.x += velo_raquete.x * 0.3
 
-                        if self.charge_level < 1.0:
-                            self.ball_velocity.x = (
-                                abs(self.ball_velocity.x) + impulso_mouse
-                            ) * 1.1  # +10% de bônus
-                            self.ball_velocity.y += self.ball_spin * abs(
-                                self.ball_velocity.x
-                            ) * efeito_borracha + (velo_raquete.y / 2)
-                        else:
-                            self.ball_velocity.x = (
-                                abs(self.ball_velocity.x) + impulso_mouse
-                            ) * 10  # +1000% de bônus
-                            self.ball_velocity.y += (
-                                self.ball_spin
-                                * abs(self.ball_velocity.x)
-                                * efeito_borracha
-                                + (velo_raquete.y / 2) * 5
-                            )
+                    if self.charge_level < 1.0:
+                        spin_factor = 0.005
+                        fator_potencia_x = 0.5
+                        efeito_borracha = 0.2
+                        impulso_mouse = abs(raw_velo_raquete.x) * fator_potencia_x
+                    else:
+                        spin_factor = 0.05
+                        fator_potencia_x = 0.9
+                        efeito_borracha = 0.6
+                        impulso_mouse = (
+                            1000 * abs(raw_velo_raquete.x) * fator_potencia_x
+                        )
+                    if abs(velo_raquete.y) >= 10:
+                        self.ball_spin = (-velo_raquete.y / 4) * spin_factor
+                    elif self.charge_level < 1.0:
+                        self.ball_spin *= 1 / 2
+                    else:
+                        self.ball_spin *= 5
 
-                        if self.pos_anterior_raquete_jogador.x > self.pos_da_bola.x:
-                            self.ball_velocity.x *= -1
+                    if self.charge_level < 1.0:
+                        self.ball_velocity.x = (
+                            abs(self.ball_velocity.x) + impulso_mouse
+                        ) * 1.1  # +10% de bônus
+                        self.ball_velocity.y += self.ball_spin * abs(
+                            self.ball_velocity.x
+                        ) * efeito_borracha + (velo_raquete.y / 2)
+                    else:
+                        self.ball_velocity.x = (
+                            abs(self.ball_velocity.x) + impulso_mouse
+                        ) * 10  # +1000% de bônus
+                        self.ball_velocity.y += (
+                            self.ball_spin * abs(self.ball_velocity.x) * efeito_borracha
+                            + (velo_raquete.y / 2) * 5
+                        )
 
-                        self.charge_level = 0.0
+                    if self.pos_anterior_raquete_jogador.x > self.pos_da_bola.x:
+                        self.ball_velocity.x *= -1
+
+                    self.charge_level = 0.0
 
                     # ANCHOR Eixo Y
                     if (
@@ -709,10 +710,7 @@ class Game:
                 self.velocidade_maxima += 0.2
                 self.velocidade_maxima = min(self.velocidade_maxima, 15.0)
         elif self.colidiu:
-            self.velocidade_maxima = (
-                self.velocidade_bola * 0.9 * self.dt
-            )  # pixels por frame
-        else:
+            self.velocidade_maxima = self.velocidade_bola * 0.05
             self.velocidade_maxima = 2.0  # pixels por frame
 
         # 2. Pegamos a posição alvo (centralizada no mouse)
@@ -818,6 +816,25 @@ class Game:
             self.pos_raquete_oponente.x - self.pos_anterior_raquete_oponente.x,
             self.pos_raquete_oponente.y - self.pos_anterior_raquete_oponente.y,
         )
+
+        diferenca_y = self.pos_da_bola.y - (
+            self.pos_raquete_oponente.y + self.tamanho_raquetes.y / 2
+        )
+        diferenca_x = self.pos_da_bola.x - (
+            self.pos_raquete_oponente.x + self.tamanho_raquetes.x / 2
+        )
+
+        if (
+            abs(diferenca_x) < 10
+            and self.pos_da_bola.y > self.pos_raquete_oponente.y - 10
+        ):
+            self.pos_raquete_oponente.y += abs(diferenca_y) * 0.1 * self.dt * 60
+        if (
+            abs(diferenca_x) < 10
+            and self.pos_da_bola.y
+            < self.pos_raquete_oponente.y + self.tamanho_raquetes.y + 10
+        ):
+            self.pos_raquete_oponente.y -= abs(diferenca_y) * 0.1 * self.dt * 60
 
         ## Limites da tela
         # Limita o chão
